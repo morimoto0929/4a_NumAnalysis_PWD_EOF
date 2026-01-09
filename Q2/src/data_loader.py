@@ -73,7 +73,7 @@ def load_temperature_data(filepath):
     # 第1列は年月（YYYYMM形式）、第2列以降は各地点の月平均気温
     df = pd.read_csv(
         filepath,
-        sep=r'\\s+',           # 可変長の空白区切り
+        sep=r'\s+',            # 可変長の空白区切り
         engine='python',       # 正規表現セパレータを使うため
         skiprows=3,            # 最初の3行（メタデータ）をスキップ
         header=None,
