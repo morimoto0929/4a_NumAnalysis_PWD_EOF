@@ -284,3 +284,148 @@ def print_variance_table(results):
               f"(累積: {results['cumulative_variance_ratio'][i]:6.2f}%)")
 
     print("=" * 60)
+
+
+def plot_variance_fraction_with_error_bars(results, error_dict, output_dir,
+                                            filename='variance_fraction_error_bars.png',
+                                            n_modes_plot=10, figsize=(10, 6), dpi=300):
+    """
+    寄与率を North's rule of thumb によるエラーバー付きでプロット
+
+    Parameters
+    ----------
+    results : dict
+        perform_pca_eof() の返り値
+    error_dict : dict
+        compute_north_error_bars() の返り値
+    output_dir : str or Path
+        出力ディレクトリ
+    filename : str
+        出力ファイル名
+    n_modes_plot : int
+        プロットするモード数（デフォルト: 10）
+    figsize : tuple
+        図のサイズ
+    dpi : int
+        解像度
+
+    Returns
+    -------
+    output_path : Path
+        保存されたファイルパス
+
+    Notes
+    -----
+    - 横軸: モード番号
+    - 縦軸: 寄与率（%）
+    - エラーバー: ± Δf_i（%）
+    - 隣接モードのエラーバーが重ならなければ、両者は有意に分離している
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # プロットするモード数を決定（利用可能なモード数の最小値）
+    n_total_modes = len(results['eigenvalues'])
+    n_modes_plot = min(n_modes_plot, n_total_modes)
+
+    # モード番号（1始まり）
+    modes = np.arange(1, n_modes_plot + 1)
+
+    # 寄与率（%）とエラーバー（%）
+    eigenvalues = results['eigenvalues'][:n_modes_plot]
+    total_variance = results['eigenvalues'].sum()
+    variance_ratios_pct = (eigenvalues / total_variance) * 100
+
+    # エラーバー
+    variance_errors = error_dict['variance_ratio_errors'][:n_modes_plot]
+    variance_errors_pct = variance_errors * 100
+
+    # プロット作成
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # エラーバー付き散布図
+    ax.errorbar(modes, variance_ratios_pct, yerr=variance_errors_pct,
+                fmt='o', markersize=8, capsize=5, capthick=2,
+                color='blue', ecolor='red', alpha=0.8,
+                label='Variance fraction with error bars')
+
+    # 装飾
+    ax.set_xlabel('Mode number', fontsize=12)
+    ax.set_ylabel('Variance fraction [%]', fontsize=12)
+    ax.set_title("Variance fraction with North's rule-of-thumb error bars",
+                 fontsize=14, fontweight='bold')
+    ax.set_xticks(modes)
+    ax.grid(True, alpha=0.3, linestyle='--')
+    ax.legend(loc='best', fontsize=10)
+
+    # 有効自由度の注記
+    se = error_dict['se']
+    textstr = f'Effective DOF: $s_e$ = {se}'
+    ax.text(0.98, 0.98, textstr, transform=ax.transAxes, fontsize=10,
+            verticalalignment='top', horizontalalignment='right',
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+    plt.tight_layout()
+
+    output_path = output_dir / filename
+    plt.savefig(output_path, dpi=dpi, bbox_inches='tight')
+    print(f"  寄与率エラーバー図を保存: {output_path}")
+    plt.close()
+
+    return output_path
+
+
+def print_north_interpretation(results, error_dict, n_modes_check=None):
+    """
+    North's rule of thumb による隣接モードの分離判定を表示
+
+    Parameters
+    ----------
+    results : dict
+        perform_pca_eof() の返り値
+    error_dict : dict
+        compute_north_error_bars() の返り値
+    n_modes_check : int or None
+        チェックするモード数（デフォルト: results['n_modes']）
+
+    Notes
+    -----
+    隣接モードのエラーバーが重ならなければ、両者は有意に分離している。
+    """
+    if n_modes_check is None:
+        n_modes_check = results['n_modes']
+
+    print("\n" + "=" * 70)
+    print("North's rule of thumb による隣接モードの分離判定")
+    print("=" * 70)
+
+    variance_ratios_pct = results['explained_variance_ratio'][:n_modes_check]
+    variance_errors_pct = error_dict['variance_ratio_errors_pct'][:n_modes_check]
+
+    for i in range(n_modes_check - 1):
+        # Mode i と Mode i+1
+        f_i = variance_ratios_pct[i]
+        f_i1 = variance_ratios_pct[i + 1]
+        df_i = variance_errors_pct[i]
+        df_i1 = variance_errors_pct[i + 1]
+
+        # エラーバーの範囲
+        lower_i = f_i - df_i
+        upper_i = f_i + df_i
+        lower_i1 = f_i1 - df_i1
+        upper_i1 = f_i1 + df_i1
+
+        # 重なりをチェック
+        # Mode i の下限が Mode i+1 の上限より大きければ分離
+        separated = lower_i > upper_i1
+
+        status = "有意に分離" if separated else "エラーバーが重なる（縮退的）"
+
+        print(f"\nMode {i+1} vs Mode {i+2}:")
+        print(f"  Mode {i+1}: {f_i:6.2f}% ± {df_i:6.2f}% "
+              f"[{lower_i:6.2f}%, {upper_i:6.2f}%]")
+        print(f"  Mode {i+2}: {f_i1:6.2f}% ± {df_i1:6.2f}% "
+              f"[{lower_i1:6.2f}%, {upper_i1:6.2f}%]")
+        print(f"  → {status}")
+
+    print("=" * 70)

@@ -275,3 +275,87 @@ def save_pca_results(results, output_dir, prefix='pca_eof'):
     variance_path = output_dir / f'{prefix}_variance.csv'
     variance_df.to_csv(variance_path, index=False, float_format='%.4f')
     print(f"  寄与率を保存: {variance_path}")
+
+
+def compute_north_error_bars(results, se=None):
+    """
+    North's rule of thumb による寄与率の不確かさを計算
+
+    Parameters
+    ----------
+    results : dict
+        perform_pca_eof() の返り値
+    se : float or None
+        有効自由度（effective degrees of freedom）
+        None の場合は se = n_years（標本数）を使用
+        講義資料の簡便法：しばしば se = s を採用する
+
+    Returns
+    -------
+    error_dict : dict
+        エラーバー情報を含む辞書
+        - 'eigenvalue_errors': 固有値の誤差 Δλ_i（全モード）
+        - 'variance_ratio_errors': 寄与率の誤差 Δf_i（全モード）
+        - 'eigenvalue_errors_pct': 固有値の誤差（%、上位n_modesのみ）
+        - 'variance_ratio_errors_pct': 寄与率の誤差（%、上位n_modesのみ）
+        - 'se': 使用した有効自由度
+
+    Notes
+    -----
+    North's rule of thumb:
+    - 固有値の誤差: Δλ_i = λ_i √(2/s_e)
+    - 寄与率の誤差: Δf_i ≈ Δλ_i / Σλ_j （分母固定の近似）
+
+    隣接モードのエラーバーが重ならなければ、両者は有意に分離している。
+    重なる場合は縮退的で、線形結合が同程度にあり得る。
+
+    References
+    ----------
+    - instruction_Q2.md の追加部分
+    - 講義資料（PCA/EOF の有効自由度と North's rule）
+    """
+    # 有効自由度の設定
+    if se is None:
+        se = results['n_years']  # デフォルト: se = s （標本数）
+
+    print(f"\n[North's rule of thumb による誤差推定]")
+    print(f"  有効自由度: s_e = {se}")
+
+    # 固有値（全モード）
+    eigenvalues = results['eigenvalues']
+
+    # 固有値の誤差: Δλ_i = λ_i √(2/s_e)
+    eigenvalue_errors = eigenvalues * np.sqrt(2.0 / se)
+
+    # 寄与率: f_i = λ_i / Σλ_j
+    total_variance = eigenvalues.sum()
+    variance_ratios = eigenvalues / total_variance
+
+    # 寄与率の誤差: Δf_i ≈ Δλ_i / Σλ_j
+    variance_ratio_errors = eigenvalue_errors / total_variance
+
+    # パーセント表示用
+    n_modes = results['n_modes']
+    eigenvalue_errors_pct = eigenvalue_errors[:n_modes]
+    variance_ratio_errors_pct = variance_ratio_errors[:n_modes] * 100  # %
+
+    print(f"  固有値の誤差（上位{n_modes}モード）:")
+    for i in range(n_modes):
+        print(f"    Mode {i+1}: Δλ = {eigenvalue_errors[i]:.4f} "
+              f"(λ = {eigenvalues[i]:.4f})")
+
+    print(f"  寄与率の誤差（上位{n_modes}モード）:")
+    for i in range(n_modes):
+        print(f"    Mode {i+1}: Δf = {variance_ratio_errors_pct[i]:.2f}% "
+              f"(f = {results['explained_variance_ratio'][i]:.2f}%)")
+
+    # エラーバー情報を辞書にまとめる
+    error_dict = {
+        'eigenvalue_errors': eigenvalue_errors,
+        'variance_ratio_errors': variance_ratio_errors,
+        'eigenvalue_errors_pct': eigenvalue_errors_pct,
+        'variance_ratio_errors_pct': variance_ratio_errors_pct,
+        'se': se
+    }
+
+    return error_dict

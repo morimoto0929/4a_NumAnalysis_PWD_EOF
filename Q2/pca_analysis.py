@@ -23,13 +23,15 @@ from src.seasonal_average import (
     remove_incomplete_cases,
     compute_anomalies
 )
-from src.pca_eof import perform_pca_eof, save_pca_results
+from src.pca_eof import perform_pca_eof, save_pca_results, compute_north_error_bars
 from src.visualization import (
     plot_pc_timeseries,
     plot_eof_pattern,
     plot_eof_map,
     print_eof_table,
-    print_variance_table
+    print_variance_table,
+    plot_variance_fraction_with_error_bars,
+    print_north_interpretation
 )
 
 
@@ -46,10 +48,14 @@ def run_pca_eof_analysis(
     plot_pc=True,
     plot_eof_bar=True,
     plot_eof_map_flag=True,
+    plot_variance_error_bars=True,
+    n_modes_error_plot=10,
+    se=None,
     separate_pc_plots=False,
     figsize_pc=(12, 8),
     figsize_eof_bar=(10, 6),
     figsize_eof_map=(15, 5),
+    figsize_variance_error=(10, 6),
     dpi=300
 ):
     """
@@ -81,6 +87,13 @@ def run_pca_eof_analysis(
         EOFパターンを棒グラフでプロットするか
     plot_eof_map_flag : bool
         EOFパターンを地図でプロットするか
+    plot_variance_error_bars : bool
+        寄与率のエラーバーをプロットするか（North's rule of thumb）
+    n_modes_error_plot : int
+        エラーバープロットで表示するモード数
+    se : float or None
+        有効自由度（effective degrees of freedom）
+        None の場合は se = n_years を使用
     separate_pc_plots : bool
         PC時系列を各モードで別々にプロットするか
     figsize_pc : tuple
@@ -89,6 +102,8 @@ def run_pca_eof_analysis(
         EOFパターン棒グラフの図のサイズ
     figsize_eof_map : tuple
         EOFパターン地図の図のサイズ
+    figsize_variance_error : tuple
+        寄与率エラーバー図のサイズ
     dpi : int
         図の解像度
 
@@ -104,6 +119,9 @@ def run_pca_eof_analysis(
     # 出力ディレクトリの作成
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # トレンド除去ありの場合の接尾辞
+    suffix = "_trend_removed" if remove_trend else ""
 
     # 1. データ読み込み
     print("\n[1] データ読み込み")
@@ -152,7 +170,7 @@ def run_pca_eof_analysis(
     print("=" * 70)
 
     if save_csv:
-        save_pca_results(results, output_dir, prefix='pca_eof')
+        save_pca_results(results, output_dir, prefix=f'pca_eof{suffix}')
 
     # 7. 可視化
     print("\n" + "=" * 70)
@@ -164,7 +182,7 @@ def run_pca_eof_analysis(
         plot_pc_timeseries(
             results,
             output_dir,
-            filename='PC_timeseries.png',
+            filename=f'PC_timeseries{suffix}.png',
             separate_plots=separate_pc_plots,
             figsize=figsize_pc,
             dpi=dpi
@@ -176,7 +194,7 @@ def run_pca_eof_analysis(
             results,
             metadata,
             output_dir,
-            filename='EOF_pattern_bar.png',
+            filename=f'EOF_pattern_bar{suffix}.png',
             figsize=figsize_eof_bar,
             dpi=dpi
         )
@@ -187,8 +205,27 @@ def run_pca_eof_analysis(
             results,
             metadata,
             output_dir,
-            filename_prefix='EOF_map',
+            filename_prefix=f'EOF_map{suffix}',
             figsize=figsize_eof_map,
+            dpi=dpi
+        )
+
+    # North's rule of thumb による寄与率のエラーバー
+    error_dict = None
+    if plot_variance_error_bars:
+        print("\n" + "=" * 70)
+        print("[7-a] North's rule of thumb による寄与率の不確かさ推定")
+        print("=" * 70)
+
+        error_dict = compute_north_error_bars(results, se=se)
+
+        plot_variance_fraction_with_error_bars(
+            results,
+            error_dict,
+            output_dir,
+            filename=f'variance_fraction_error_bars{suffix}.png',
+            n_modes_plot=n_modes_error_plot,
+            figsize=figsize_variance_error,
             dpi=dpi
         )
 
@@ -199,6 +236,10 @@ def run_pca_eof_analysis(
 
     # 寄与率の表示
     print_variance_table(results)
+
+    # North's rule of thumb による隣接モード分離判定
+    if error_dict is not None:
+        print_north_interpretation(results, error_dict, n_modes_check=n_modes)
 
     # EOFパターンの数値表示
     print_eof_table(results, metadata)
@@ -299,6 +340,23 @@ if __name__ == "__main__":
         action="store_true",
         help="PC時系列を各モードで別々にプロット"
     )
+    parser.add_argument(
+        "--no_plot_variance_error_bars",
+        action="store_true",
+        help="寄与率エラーバーのプロットを無効化"
+    )
+    parser.add_argument(
+        "--n_modes_error_plot",
+        type=int,
+        default=10,
+        help="エラーバープロットで表示するモード数"
+    )
+    parser.add_argument(
+        "--se",
+        type=float,
+        default=None,
+        help="有効自由度（effective degrees of freedom）。未指定の場合は標本数を使用"
+    )
 
     # 図のパラメータ
     parser.add_argument(
@@ -324,6 +382,9 @@ if __name__ == "__main__":
         plot_pc=not args.no_plot_pc,
         plot_eof_bar=not args.no_plot_eof_bar,
         plot_eof_map_flag=not args.no_plot_eof_map,
+        plot_variance_error_bars=not args.no_plot_variance_error_bars,
+        n_modes_error_plot=args.n_modes_error_plot,
+        se=args.se,
         separate_pc_plots=args.separate_pc_plots,
         dpi=args.dpi
     )
