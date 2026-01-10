@@ -12,7 +12,7 @@ def plot_spectrum(freq, power, intervals, nu, N, dt, window_size, output_path):
     Parameters
     ----------
     freq : ndarray
-        周波数（Hz）
+        周波数（cycles/hour, cph）
     power : ndarray
         パワースペクトル
     intervals : dict
@@ -47,19 +47,19 @@ def plot_spectrum(freq, power, intervals, nu, N, dt, window_size, output_path):
         ax.loglog(freq, upper_99, 'r:', linewidth=1, alpha=0.7)
         ax.fill_between(freq, lower_99, upper_99, color='red', alpha=0.05)
 
-    ax.set_xlabel('Frequency (Hz)', fontsize=12)
+    ax.set_xlabel('Frequency (cycles/hour, cph)', fontsize=12)
     ax.set_ylabel('Power (arb. unit)', fontsize=12)
     ax.set_title('One-Sided Power Spectrum with Confidence Intervals', fontsize=14)
     ax.legend(loc='best', fontsize=10)
     ax.grid(True, which='both', linestyle=':', alpha=0.5)
 
     # 解析条件の注記
-    fs = 1 / dt
+    fs = 1 / dt  # cycles per hour (cph)
     nyquist_freq = fs / 2
     textstr = '\n'.join([
         f'Data length: N = {N}',
-        f'Sampling interval: Δt = {dt:.4f} (fs = {fs:.4f} Hz)',
-        f'Nyquist frequency: {nyquist_freq:.6f} Hz',
+        f'Sampling interval: Δt = {dt:.4f} hour (fs = {fs:.4f} cph)',
+        f'Nyquist frequency: {nyquist_freq:.6f} cph',
         f'Taper: Cos20',
         f'Smoothing: Moving average (m = {window_size})',
         f'Equivalent DOF: ν = {nu:.2f}'
