@@ -356,7 +356,6 @@ def plot_variance_fraction_with_error_bars(results, error_dict, output_dir,
                  fontsize=14, fontweight='bold')
     ax.set_xticks(modes)
     ax.grid(True, alpha=0.3, linestyle='--')
-    ax.legend(loc='best', fontsize=10)
 
     # 有効自由度の注記
     se = error_dict['se']
