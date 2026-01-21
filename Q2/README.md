@@ -132,10 +132,10 @@ def run_pca_eof_analysis(
     plot_pc=True,
     plot_eof_bar=True,
     plot_eof_map_flag=True,
-    separate_pc_plots=False,
+    separate_pc_plots=True,
     figsize_pc=(12, 8),
     figsize_eof_bar=(10, 6),
-    figsize_eof_map=(15, 5),
+    figsize_eof_map=(15, 7),
     dpi=300
 )
 ```
@@ -163,10 +163,10 @@ def run_pca_eof_analysis(
 | `plot_pc` | `bool` | `True` | PC時系列をプロットするか |
 | `plot_eof_bar` | `bool` | `True` | EOFパターンを棒グラフでプロットするか |
 | `plot_eof_map_flag` | `bool` | `True` | EOFパターンを地図でプロットするか |
-| `separate_pc_plots` | `bool` | `False` | PC時系列を各モードで別々にプロットするか |
+| `separate_pc_plots` | `bool` | `True` | PC時系列を各モードで別々にプロットするか（まとめたい場合は `--no_separate_pc_plots`） |
 | `figsize_pc` | `tuple` | `(12, 8)` | PC時系列の図のサイズ |
 | `figsize_eof_bar` | `tuple` | `(10, 6)` | EOFパターン棒グラフの図のサイズ |
-| `figsize_eof_map` | `tuple` | `(15, 5)` | EOFパターン地図の図のサイズ |
+| `figsize_eof_map` | `tuple` | `(15, 7)` | EOFパターン地図の図のサイズ |
 | `dpi` | `int` | `300` | 図の解像度 |
 
 ### 戻り値

@@ -52,9 +52,11 @@ def plot_pc_timeseries(results, output_dir, filename='PC_timeseries.png',
         if n_modes == 1:
             axes = [axes]
 
+        colors = ['b', 'r', 'g', 'm', 'c', 'y', 'k']
         for i in range(n_modes):
             ax = axes[i]
-            ax.plot(years, PC_std[:, i], 'b-', linewidth=1.5)
+            color = colors[i % len(colors)]
+            ax.plot(years, PC_std[:, i], color=color, linewidth=3.0)
             ax.axhline(0, color='k', linestyle='--', linewidth=0.8, alpha=0.5)
             ax.set_ylabel(f'PC{i+1} (std)', fontsize=11)
             ax.set_title(f'Mode {i+1} (Explained Variance: {explained_variance_ratio[i]:.2f}%)',
@@ -72,7 +74,7 @@ def plot_pc_timeseries(results, output_dir, filename='PC_timeseries.png',
         for i in range(n_modes):
             label = f'Mode {i+1} ({explained_variance_ratio[i]:.2f}%)'
             ax.plot(years, PC_std[:, i], color=colors[i % len(colors)],
-                    linewidth=1.5, label=label, alpha=0.8)
+                    linewidth=3.0, label=label, alpha=0.8)
 
         ax.axhline(0, color='k', linestyle='--', linewidth=0.8, alpha=0.5)
         ax.set_xlabel('Year', fontsize=12)
@@ -194,8 +196,13 @@ def plot_eof_map(results, metadata, output_dir, filename_prefix='EOF_map',
     output_paths = []
 
     # 全モードを1つの図にプロット
-    fig, axes = plt.subplots(1, n_modes, figsize=figsize,
-                             subplot_kw={'projection': None})
+    fig, axes = plt.subplots(
+        1,
+        n_modes,
+        figsize=figsize,
+        subplot_kw={'projection': None},
+        constrained_layout=True  # レイアウト重なりを自動調整
+    )
     if n_modes == 1:
         axes = [axes]
 
@@ -219,11 +226,6 @@ def plot_eof_map(results, metadata, output_dir, filename_prefix='EOF_map',
             ax.text(lons[j], lats[j], station, fontsize=7,
                     ha='center', va='bottom')
 
-        # カラーバー
-        cbar = plt.colorbar(scatter, ax=ax, orientation='horizontal',
-                            pad=0.05, shrink=0.8)
-        cbar.set_label('EOF (°C)', fontsize=9)
-
         ax.set_xlabel('Longitude (°E)', fontsize=10)
         ax.set_ylabel('Latitude (°N)', fontsize=10)
         ax.set_title(f'Mode {i+1} EOF Pattern\n({explained_variance_ratio[i]:.2f}%)',
@@ -231,7 +233,15 @@ def plot_eof_map(results, metadata, output_dir, filename_prefix='EOF_map',
         ax.grid(True, linestyle=':', alpha=0.5)
         ax.set_aspect('equal', adjustable='box')
 
-    plt.tight_layout()
+    # 共有カラーバー（図の下に1つだけ配置）
+    cbar = fig.colorbar(
+        scatter,
+        ax=axes,
+        orientation='horizontal',
+        fraction=0.05,
+        pad=0.08
+    )
+    cbar.set_label('EOF (°C)', fontsize=10)
 
     output_path = output_dir / f'{filename_prefix}_all_modes.png'
     plt.savefig(output_path, dpi=dpi, bbox_inches='tight')

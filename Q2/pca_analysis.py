@@ -51,10 +51,10 @@ def run_pca_eof_analysis(
     plot_variance_error_bars=True,
     n_modes_error_plot=10,
     se=None,
-    separate_pc_plots=False,
+    separate_pc_plots=True,
     figsize_pc=(12, 8),
     figsize_eof_bar=(10, 6),
-    figsize_eof_map=(15, 5),
+    figsize_eof_map=(15, 7),
     figsize_variance_error=(10, 6),
     dpi=300
 ):
@@ -179,11 +179,13 @@ def run_pca_eof_analysis(
 
     # PC時系列のプロット
     if plot_pc:
+        # トレンド除去時は自動的に各モードを別図にして重なりを避ける
+        separate_pc = separate_pc_plots or remove_trend
         plot_pc_timeseries(
             results,
             output_dir,
             filename=f'PC_timeseries{suffix}.png',
-            separate_plots=separate_pc_plots,
+            separate_plots=separate_pc,
             figsize=figsize_pc,
             dpi=dpi
         )
@@ -335,11 +337,14 @@ if __name__ == "__main__":
         action="store_true",
         help="EOFパターン地図のプロットを無効化"
     )
+    # PC時系列表示: デフォルトでモード別の個別図。まとめたい場合のみオプションで無効化。
     parser.add_argument(
-        "--separate_pc_plots",
-        action="store_true",
-        help="PC時系列を各モードで別々にプロット"
+        "--no_separate_pc_plots",
+        dest="separate_pc_plots",
+        action="store_false",
+        help="PC時系列を1枚にまとめて描画する"
     )
+    parser.set_defaults(separate_pc_plots=True)
     parser.add_argument(
         "--no_plot_variance_error_bars",
         action="store_true",
